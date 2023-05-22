@@ -23,14 +23,19 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  static void setLocalStorage(DateTime date) async {
+  void setLocalStorage(DateTime date) async {
     final SharedPreferences pref = await SharedPreferences.getInstance();
 
     int timeStamp = date.millisecondsSinceEpoch;
 
     pref.setInt('meetDate', timeStamp);
 
-    print(await getDateTime());
+    setState(() {
+      selectedDate = date;
+      _selectedDate = _prefs.then((SharedPreferences prefs) {
+        return DateTime.fromMillisecondsSinceEpoch(prefs.getInt('meetDate') ?? DateTime.now().millisecondsSinceEpoch);
+      });
+    });
   }
 
   static Future<DateTime> getDateTime() async {
@@ -129,9 +134,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                   now.day,
                                 ),
                                 onDateTimeChanged: (DateTime date) {
-                                  setState(() {
-                                    selectedDate = date;
-                                  });
                                   setLocalStorage(date);
                                 },
                               ));
