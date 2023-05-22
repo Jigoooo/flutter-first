@@ -1,3 +1,5 @@
+import 'dart:ffi';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -11,6 +13,15 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
+  late Future<DateTime> _selectedDate;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedDate = _prefs.then((SharedPreferences prefs) {
+      return DateTime.fromMillisecondsSinceEpoch(prefs.getInt('meetDate') ?? DateTime.now().millisecondsSinceEpoch);
+    });
+  }
 
   static void setLocalStorage(DateTime date) async {
     final SharedPreferences pref = await SharedPreferences.getInstance();
@@ -19,7 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     pref.setInt('meetDate', timeStamp);
 
-    print(getDateTime());
+    print(await getDateTime());
   }
 
   static Future<DateTime> getDateTime() async {
@@ -31,7 +42,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     DateTime dateTime = DateTime.fromMillisecondsSinceEpoch(timeStamp);
 
-    return dateTime as DateTime;
+    return dateTime;
   }
 
   DateTime selectedDate = DateTime(
@@ -48,15 +59,30 @@ class _HomeScreenState extends State<HomeScreen> {
           bottom: false,
           child: SizedBox(
             width: MediaQuery.of(context).size.width,
-            child: Column(
-              children: [
-                _TopPart(
-                  selectedDate: selectedDate,
-                  onPressed: onHeartPressed,
-                ),
-                const _BottomPart(),
-              ],
-            ),
+            child: FutureBuilder<DateTime>(
+                future: _selectedDate,
+                builder: (BuildContext context, AsyncSnapshot<DateTime> snapshot) {
+                  switch (snapshot.connectionState) {
+                    case ConnectionState.none:
+                    case ConnectionState.waiting:
+                      return const CircularProgressIndicator();
+                    case ConnectionState.active:
+                    case ConnectionState.done:
+                      if (snapshot.hasError) {
+                        return Text('Error: ${snapshot.error}');
+                      } else {
+                        return Column(
+                          children: [
+                            _TopPart(
+                              selectedDate: snapshot.data!,
+                              onPressed: onHeartPressed,
+                            ),
+                            const _BottomPart(),
+                          ],
+                        );
+                      }
+                  }
+                }),
           ),
         ));
   }
@@ -73,30 +99,45 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Container(
               height: 300.0,
               color: Colors.white,
-              child: CupertinoTheme(
-                  data: CupertinoThemeData(
-                    brightness: Theme.of(context).brightness,
-                    textTheme: const CupertinoTextThemeData(
-                      dateTimePickerTextStyle: TextStyle(
-                        fontSize: 28,
-                      ),
-                    ),
-                  ),
-                  child: CupertinoDatePicker(
-                    mode: CupertinoDatePickerMode.date,
-                    initialDateTime: selectedDate,
-                    maximumDate: DateTime(
-                      now.year,
-                      now.month,
-                      now.day,
-                    ),
-                    onDateTimeChanged: (DateTime date) {
-                      setState(() {
-                        selectedDate = date;
-                      });
-                      setLocalStorage(date);
-                    },
-                  )),
+              child: FutureBuilder<DateTime>(
+                  future: _selectedDate,
+                  builder: (BuildContext context, AsyncSnapshot<DateTime> snapshot) {
+                    switch (snapshot.connectionState) {
+                      case ConnectionState.none:
+                      case ConnectionState.waiting:
+                        return const CircularProgressIndicator();
+                      case ConnectionState.active:
+                      case ConnectionState.done:
+                        if (snapshot.hasError) {
+                          return Text('Error: ${snapshot.error}');
+                        } else {
+                          return CupertinoTheme(
+                              data: CupertinoThemeData(
+                                brightness: Theme.of(context).brightness,
+                                textTheme: const CupertinoTextThemeData(
+                                  dateTimePickerTextStyle: TextStyle(
+                                    fontSize: 28,
+                                  ),
+                                ),
+                              ),
+                              child: CupertinoDatePicker(
+                                mode: CupertinoDatePickerMode.date,
+                                initialDateTime: snapshot.data,
+                                maximumDate: DateTime(
+                                  now.year,
+                                  now.month,
+                                  now.day,
+                                ),
+                                onDateTimeChanged: (DateTime date) {
+                                  setState(() {
+                                    selectedDate = date;
+                                  });
+                                  setLocalStorage(date);
+                                },
+                              ));
+                        }
+                    }
+                  }),
             ),
           );
         });
