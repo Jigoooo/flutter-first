@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -9,6 +10,30 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
+
+  static void setLocalStorage(DateTime date) async {
+    final SharedPreferences pref = await SharedPreferences.getInstance();
+
+    int timeStamp = date.millisecondsSinceEpoch;
+
+    pref.setInt('meetDate', timeStamp);
+
+    print(getDateTime());
+  }
+
+  static Future<DateTime> getDateTime() async {
+    final SharedPreferences pref = await SharedPreferences.getInstance();
+
+    int? timeStamp = pref.getInt('meetDate');
+
+    timeStamp ??= DateTime.now().millisecondsSinceEpoch;
+
+    DateTime dateTime = DateTime.fromMillisecondsSinceEpoch(timeStamp);
+
+    return dateTime as DateTime;
+  }
+
   DateTime selectedDate = DateTime(
     DateTime.now().year,
     DateTime.now().month,
@@ -69,6 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       setState(() {
                         selectedDate = date;
                       });
+                      setLocalStorage(date);
                     },
                   )),
             ),
